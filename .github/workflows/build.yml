@@ -25,6 +25,9 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
+      - name: Fix Dead JCenter Links
+        run: find node_modules -type f -name "build.gradle" -exec sed -i 's/jcenter()/mavenCentral()/g' {} +
+
       - name: Build Android APK
         working-directory: android
         run: |
