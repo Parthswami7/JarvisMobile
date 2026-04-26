@@ -3,41 +3,40 @@ on:
   push:
     branches:
       - main
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
         with:
           node-version: '18'
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
+          
+      - uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
-
-      - name: Install Dependencies
-        run: npm install
-
+          
+      - run: npm install
+      
       - name: Fix Dead JCenter Links
         run: find node_modules -type f -name "build.gradle" -exec sed -i 's/jcenter()/mavenCentral()/g' {} +
-
+        
+      - name: Bundle React Native JS
+        run: |
+          mkdir -p android/app/src/main/assets
+          npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/
+          
       - name: Build Android APK
         working-directory: android
         env:
-          # This tells Java to use 4.5GB of RAM specifically for the build
           GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4608m -XX:MaxMetaspaceSize=512m"
         run: |
           chmod +x gradlew
           ./gradlew clean assembleDebug --no-daemon
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+          
+      - uses: actions/upload-artifact@v4
         with:
           name: JARVIS-App
           path: android/app/build/outputs/apk/debug/app-debug.apk
