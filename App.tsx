@@ -51,7 +51,7 @@ export default function App() {
   const startListening = async () => {
     if (!context) return setChat("Load a brain first!");
     setIsListening(true);
-    try { await Voice.start('en-US'); } catch (e) { setChat("Mic error."); }
+    try { await Voice.start('en-US'); } catch (e) { setChat("Mic error. Check permissions."); }
   };
 
   const stopListening = async () => {
@@ -62,29 +62,47 @@ export default function App() {
   const processCommand = async (text: string) => {
     if (!context) return;
     setChat("Thinking...");
-    
+
+    // THE DEVICE DIRECTORY
+    const devices: { [key: string]: string } = {
+      "PC": "192.168.1.17", // Your Lenovo PC in Sikar
+      "TABLET": "192.168.1.X", // Replace with your tablet's IP later
+      "PHONE": "192.168.1.Y"   // Replace with your other phone's IP later
+    };
+
     try {
-      // NEW PROMPT: Teaches JARVIS to output the secret lock code
+      // THE UPGRADED PROMPT
       const response = await context.completion({
-        prompt: `System: You are JARVIS. Keep answers short. If the user asks to lock the PC or computer, reply ONLY with the exact text: [CMD: LOCK_PC].\nUser: ${text}\nJARVIS:`,
+        prompt: `System: You are JARVIS. If the user gives a device command, reply ONLY with this exact format: [CMD: DEVICE_NAME : ACTION]. Devices: PC, TABLET, PHONE. Actions: LOCK, SHUTDOWN, YOUTUBE, SLEEP. Example: If user says "Shut down my PC", reply "[CMD: PC : SHUTDOWN]".\nUser: ${text}\nJARVIS:`,
         n_predict: 50,
       });
 
       const aiText = response.text.trim();
 
-      // THE INTERCEPTOR: Fires the network command instead of speaking the code
-      if (aiText.includes("[CMD: LOCK_PC]")) {
-        setChat("JARVIS: Locking your PC, sir.");
-        Tts.speak("Locking the main terminal now, sir.");
-        
-        // IMPORTANT: Replace the X's with your PC's actual local IP address (e.g., 192.168.1.15)
-      fetch('http://192.168.1.17:5000/command', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'lock_pc' })
-        }).catch(err => setChat("Network error. PC might be offline."));
+      // THE DYNAMIC INTERCEPTOR
+      const cmdMatch = aiText.match(/\[CMD:\s*([A-Z]+)\s*:\s*([A-Z_]+)\]/);
+
+      if (cmdMatch) {
+        const targetDevice = cmdMatch[1];
+        const action = cmdMatch[2];
+        const targetIP = devices[targetDevice];
+
+        if (targetIP) {
+          setChat(`JARVIS: Executing ${action} protocol on ${targetDevice}, sir.`);
+          Tts.speak(`Accessing ${targetDevice} now.`);
+
+          // Fire the command to the specific device's IP
+          fetch(`http://${targetIP}:5000/command`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: action.toLowerCase() })
+          }).catch(err => setChat(`${targetDevice} appears to be offline or unreachable.`));
+
+        } else {
+          setChat(`JARVIS: I don't have an IP address configured for ${targetDevice} yet.`);
+          Tts.speak(`I do not have an IP address for that device.`);
         }
-      else {
+      } else {
         // Normal conversation flow
         setChat(`JARVIS: ${aiText}`);
         Tts.speak(aiText);
@@ -104,7 +122,7 @@ export default function App() {
           <Text style={styles.buttonText}>Load JARVIS Brain (.gguf)</Text>
         </TouchableOpacity>
       ) : (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.button, isListening && styles.buttonActive]}
           onPressIn={startListening} onPressOut={stopListening}>
           <Text style={styles.buttonText}>{isListening ? "Listening..." : "Hold to Speak"}</Text>
