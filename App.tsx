@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import Voice from '@react-native-voice/voice';
 import Tts from 'react-native-tts';
 import { initLlama, releaseAllLlama } from 'llama.rn';
-import DocumentPicker from 'react-native-document-picker';
+import { pick, types, errorCodes, isErrorWithCode } from '@react-native-documents/picker';
 import RNFS from 'react-native-fs';
 
 export default function App() {
@@ -21,21 +21,22 @@ export default function App() {
       }
     };
     
-    // Set default speech to English (you can change this to hi-IN later for Hindi/Marwari)
     Tts.setDefaultLanguage('en-US');
 
     return () => {
       Voice.destroy().then(Voice.removeAllListeners);
-      releaseAllLlama();
+      if (context) releaseAllLlama();
     };
   }, [context]);
 
-  // 2. Setup the Brain Loader
+  // 2. Setup the Modern Brain Loader
   const loadBrain = async () => {
     try {
       setChat("Opening file manager...");
-      const res = await DocumentPicker.pickSingle({
-        type: [DocumentPicker.types.allFiles],
+      
+      // NEW: Modern syntax for the updated document picker
+      const [res] = await pick({
+        type: [types.allFiles],
       });
       
       setChat("Installing brain into secure sector... Please wait.");
@@ -55,10 +56,11 @@ export default function App() {
       Tts.speak("I am online and ready.");
       
     } catch (err: any) {
-      if (!DocumentPicker.isCancel(err)) {
-        setChat(`Error loading brain: ${err.message}`);
-      } else {
+      // NEW: Modern error handling for the updated picker
+      if (isErrorWithCode(err) && err.code === errorCodes.OPERATION_CANCELED) {
         setChat("Brain installation cancelled.");
+      } else {
+        setChat(`Error loading brain: ${err.message || 'Unknown error'}`);
       }
     }
   };
