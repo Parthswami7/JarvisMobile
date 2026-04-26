@@ -30,10 +30,12 @@ jobs:
 
       - name: Build Android APK
         working-directory: android
+        env:
+          # This tells Java to use 4.5GB of RAM specifically for the build
+          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4608m -XX:MaxMetaspaceSize=512m"
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
-
+          ./gradlew clean assembleDebug --no-daemon
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
